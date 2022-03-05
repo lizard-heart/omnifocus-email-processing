@@ -1,0 +1,111 @@
+/*{
+  "type": "action",
+  "targets": ["omnifocus"],
+  "author": "Henry Gustafson",
+  "identifier": "com.henry.cleanup_inbox_emails",
+  "version": "1.0",
+  "description": "This action will clean up tasks dragged from mail into the inbox.",
+  "label": "Clean up emails in inbox",
+  "shortLabel": "Clean inbox emails"
+}*/
+
+(() => {
+	var action = new PlugIn.Action(function(selection, sender){
+
+		try {
+			var inboxCount = inbox.length;
+			var taskIDs = inbox.map(task => task.id.primaryKey);
+			var emailTasks = []
+			for (i = 0; i < inboxCount; i++) {
+				var task = Task.byIdentifier(taskIDs[i])
+				if (task.name.includes("Email from")) {
+					// console.log("Original name:", task.name);
+					emailTasks.push(task)
+					// var newName = "";
+					//
+					// for (i = 0; i < 2; i++) {
+					// 	console.log(i)
+					// }
+					// console.log(task.name.split(":").length)
+					// for (i = 0; i < task.name.split(":").length; i++) {
+					// 	console.log(i);
+					// };
+					// console.log("New name:", newName);
+				}
+			}
+			// console.log(emailTasks[1])
+			for (i = 0; i < emailTasks.length; i++) {
+				var emailTaskName = emailTasks[i].name;
+				var taskArray = [emailTasks[i]]
+				var colonSplit = emailTaskName.split(":");
+				var newName = "";
+				if (emailTaskName.includes("Fwd") || emailTaskName.includes("Re")) {
+					for (j=2; j < colonSplit.length; j++) {
+						newName = newName + colonSplit[j]
+					}
+				} else {
+					for (j=1; j < colonSplit.length; j++) {
+						newName = newName + colonSplit[j]
+					}
+				}
+				newName = newName.slice(1)
+				// console.log("Original name:", emailTaskName);
+				// console.log("New name:", newName)
+
+				emailTasks[i].name = newName
+				var taskNote = emailTasks[i].note
+				// console.log(taskNote)
+				var emailLink = ""
+				if (taskNote.includes("Original message:")) {
+					console.log(taskNote)
+					emailLink = taskNote.split("Original message:")[1].split("> <")[0] + ">"
+				}
+				console.log(emailLink)
+				emailTasks[i].note = emailLink
+				var targetProject = flattenedProjects.byName("Waiting")
+				moveTasks(taskArray, targetProject.beginning)
+			}
+		} catch (err){
+			new Alert('SCRIPT ERROR', err.message).show()
+		}
+	});
+
+	function btoa(stringParam) {
+		const b64 =
+			'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+		const string = String(stringParam);
+		var bitmap,
+			a,
+			b,
+			c,
+			result = '',
+			i = 0,
+			rest = string.length % 3;
+
+		for (; i < string.length; ) {
+			if (
+				(a = string.charCodeAt(i++)) > 255 ||
+				(b = string.charCodeAt(i++)) > 255 ||
+				(c = string.charCodeAt(i++)) > 255
+			) {
+				throw "Error";
+			}
+
+			bitmap = (a << 16) | (b << 8) | c;
+			result +=
+				b64.charAt((bitmap >> 18) & 63) +
+				b64.charAt((bitmap >> 12) & 63) +
+				b64.charAt((bitmap >> 6) & 63) +
+				b64.charAt(bitmap & 63);
+		}
+		return rest ? result.slice(0, rest - 3) + '==='.substring(rest) : result;
+	}
+
+	action.validate = function(selection, sender){
+		// validation code
+		// selection options: tasks, projects, folders, tags
+		return true
+	};
+
+	return action;
+})();
